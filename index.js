@@ -151,6 +151,192 @@ ArduinoSwitchAccessory.prototype.getServices = function () {
   return services;
 };
 
+/** Dimmer ACCESSORY CLASS **/
+/**
+ * [ArduinoDimmerAccessory description]
+ *
+ * @param   {[type]}  sw           [sw description]
+ * @param   {[type]}  log          [log description]
+ * @param   {[type]}  config       [config description]
+ * @param   {[type]}  transceiver  [transceiver description]
+ *
+ * @return  {[type]}               [return description]
+ */
+function ArduinoDimmerAccessory (sw, log, config, transceiver) {
+    // console.log("Dimmer Class");
+    const self = this;
+    self.name = sw.name;
+    self.sw = sw;
+    self.log = log;
+    self.config = config;
+    self.transceiver = transceiver;
+    self.currentState = 0;
+    self.throttle = config.throttle ? config.throttle : 500;
+    self.lastOnTime = Date.now();
+    self.currentBrightness = 0;
+    
+    
+    self.service = new Service.Lightbulb(self.name);
+    
+    // create handlers for required characteristics
+    // self.service.getCharacteristic(Characteristic.Brightness)
+    // .on("get", this.getBrightness.bind(this))
+    // .on("set", this.setBrightness.bind(this));
+
+    // self.service.getCharacteristic(Characteristic.Brightness)
+    // .on("set", doDimming);
+    // .on("get", this.getBrightness.bind(this))
+    // self.service.getCharacteristic(Characteristic.On)
+    // .on("get", this.getBrightness.bind(this))
+        // .on("set", doDimming);
+
+
+    self.service.getCharacteristic(Characteristic.Brightness)
+    .on('get', function (cb) {
+        cb(null, self.currentBrightness);
+    });
+    
+    self.service.getCharacteristic(Characteristic.On).value = self.currentState;
+    
+    self.service.getCharacteristic(Characteristic.On).on('get', function (cb) {
+        // state = self.currentState > 0 ? true : false
+        cb(null, self.currentState);
+    });
+
+    self.service.getCharacteristic(Characteristic.Brightness).on('set', function (value, cb) {
+        self.log("Dim");
+        // await sleep(200)
+        // console.log("doDimming")
+        // console.log(`State: ${state}`);
+        // self.currentState = this.value % 16;
+        // addCode(out, sentCodes);
+        self.log(`Value: ${value}`);
+        self.lastOnTime = Date.now();
+
+        //make dime message
+        dim = Math.floor(value / 100 * 16)
+        self.currentBrightness = value;
+        self.currentState = 1;
+        self.log(`New Val: ${dim}`)
+        var out = {}
+        out.type = sw.type
+        // var msg = {id: self.sw.id, unit: self.sw.unit, dimlevel: dim}
+        // self.log(`Message: %`, msg)
+
+        out.message = Object.assign({}, sw.message); // copy needed because on may not contain dim info
+        out.message.id = Number(out.message.id)
+        out.message.dimlevel = dim
+        self.log(`Message: %`, out)
+
+
+        // self.log(`SW: %`, sw)
+
+        self.transceiver.send(out)
+
+        cb(null);
+    });
+    
+    // self.service.getCharacteristic(Characteristic.Brightness).on('set', function (state, cb) {
+    //     self.log("Dim");
+    //     self.currentState = state;
+    //     if (self.currentState) { //what does this check do?
+    //         // const out = getSendObject(self.sw, true);
+    //         self.log(`State: ${this.state}`);
+    //         // self.currentState = this.value % 16;
+    //         // addCode(out, sentCodes);
+    //         self.log(`Value: ${this.value}`);
+    //         // self.log("SW: %", sw);
+    //         // self.log("Out: %", out);
+    //         // self.transceiver.send(out);
+    //         self.log('Sent brightness code for %s', self.sw.name);
+    //     }
+    //     cb(null);
+    // });
+    
+    self.service.getCharacteristic(Characteristic.On).on('set', function (state, cb) {
+        if (state == false) self.log("OFF");
+        // This "Characteristic.On" "set" event is also fired when brightness is set.
+        // To avoid sending erronious events, we set a timestamp on every brightness
+        // "set" event. If the on event is triggered within the threshold of the last
+        // timestamp, we do not execute. 
+        var tson = Date.now() - self.lastOnTime;
+        self.log(`Time since: ${tson}`);
+        if ((tson) > 100) {
+            self.log("ON");
+            self.log(`State: ${state}`);
+            self.log(`Value ON: ${this.value}`);
+    
+            self.currentState = state;
+            if (self.currentState) {
+                const out = getSendObject(self.sw, true);
+                addCode(out, sentCodes);
+                self.transceiver.send(out);
+                self.log('Sent on code for %s', self.sw.name);
+            } else {
+                const out = getSendObject(self.sw, false);
+                addCode(out, sentCodes);
+                self.transceiver.send(out);
+                self.log(`Out: %`, out)
+                self.log('Sent off code for %s', self.sw.name);
+            }
+            cb(null);
+        }
+    });
+
+    // self.service.getCharacteristic(Characteristic.On).on('set', doDimming);
+    
+    self.notifyOn = helpers.throttle(function () {
+        self.log('Received on code for %s', self.sw.name);
+        self.currentState = true;
+        self.service.getCharacteristic(Characteristic.On).updateValue(self.currentState);
+    }, self.throttle, self);
+    self.notifyOff = helpers.throttle(function () {
+        self.log('Received off code for %s', self.sw.name);
+        self.currentState = false;
+        self.service.getCharacteristic(Characteristic.On).updateValue(self.currentState);
+    }, self.throttle, self);
+}// TODO: code stuff
+ArduinoDimmerAccessory.prototype.notify = function (message) {
+    if (isSameAsSwitch(message, this.sw)) {
+        if (getSwitchState(message, this.sw)) {
+            this.notifyOn();
+        } else {
+            this.notifyOff();
+        }
+        return true;
+    }
+    return false;
+};
+ArduinoDimmerAccessory.prototype.getServices = function () {
+    const self = this;
+    var services = [];
+    var service = new Service.AccessoryInformation();
+    service.setCharacteristic(Characteristic.Name, self.name)
+    .setCharacteristic(Characteristic.Manufacturer, '433 MHz RC')
+    .setCharacteristic(Characteristic.FirmwareRevision, process.env.version)
+    .setCharacteristic(Characteristic.HardwareRevision, '1.0.0');
+    services.push(service);
+    services.push(self.service);
+    return services;
+};
+
+async function doDimming(value, cb) {
+    await sleep(200)
+    console.log("doDimming")
+    // console.log(`State: ${state}`);
+    // self.currentState = this.value % 16;
+    // addCode(out, sentCodes);
+    console.log(`Value: ${value}`);
+    this.lastOnTime = Date.now();
+    cb(null);
+}
+
+function sleep(ms) {
+    return new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+  } 
+
 /** BUTTON ACCESSORY CLASS **/
 function ArduinoButtonAccessory (sw, log, config) {
   const self = this;
