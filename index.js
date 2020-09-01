@@ -53,11 +53,17 @@ ArduinoSwitchPlatform.prototype.accessories = function (callback) {
   }
   if (self.config.motion) {
     self.config.motion.forEach(function (sw) {
-      self.accessories.push(new ArduinoMotionAccessory(sw, self.log, self.config));
-    });
-  }
-  setTimeout(self.listen.bind(self), 10);
-  callback(self.accessories);
+            self.accessories.push(new ArduinoMotionAccessory(sw, self.log, self.config));
+        });
+    }
+    if (self.config.dimmers) {
+        // self.log("dimmers");
+        self.config.dimmers.forEach(function (sw) {
+            self.accessories.push(new ArduinoDimmerAccessory(sw, self.log, self.config, self.transceiver));
+        });
+    }
+    setTimeout(self.listen.bind(self), 10);
+    callback(self.accessories);
 };
 ArduinoSwitchPlatform.prototype.receiveMessage = function (value) {
   const self = this;
