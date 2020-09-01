@@ -3,9 +3,15 @@ const SerialTransceiver = require('./tc-serial');
 const WebsocketTransceiver = require('./tc-websocket');
 var sentCodes = [];
 
+module.exports = function (homebridge) {
+    Service = homebridge.hap.Service;
+    Characteristic = homebridge.hap.Characteristic;
+    homebridge.registerPlatform('homebridge-433-arduino', 'ArduinoRCSwitch', ArduinoSwitchPlatform);
+};
+
 /** PLATFORM CLASS **/
 function ArduinoSwitchPlatform (log, config) {
-  const self = this;
+    const self = this;
   self.config = config;
   self.log = log;
   var ioTimeout = 100;
@@ -79,18 +85,12 @@ ArduinoSwitchPlatform.prototype.receiveMessage = function (value) {
     try {
       self.log(JSON.stringify(value));
     } catch (e) { this.log(e); }
-  }
-};
-
-module.exports = function (homebridge) {
-  Service = homebridge.hap.Service;
-  Characteristic = homebridge.hap.Characteristic;
-  homebridge.registerPlatform('homebridge-433-arduino', 'ArduinoRCSwitch', ArduinoSwitchPlatform);
+    }
 };
 
 /** SWITCH ACCESSORY CLASS **/
 function ArduinoSwitchAccessory (sw, log, config, transceiver) {
-  const self = this;
+    const self = this;
   self.name = sw.name;
   self.sw = sw;
   self.log = log;
@@ -219,7 +219,7 @@ function ArduinoDimmerAccessory (sw, log, config, transceiver) {
         self.log(`Value: ${value}`);
         self.lastOnTime = Date.now();
 
-        //make dime message
+        //make dim message
         dim = Math.floor(value / 100 * 16)
         self.currentBrightness = value;
         self.currentState = 1;
