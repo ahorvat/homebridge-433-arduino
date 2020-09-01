@@ -4,7 +4,8 @@
   "description": "Add bidirectional support for 433MHz switches to Homebridge using Arduino or ESP hardware.",
   "main": "index.js",
   "scripts": {
-    "test": "./node_modules/homebridge/bin/homebridge -P ./ -I -U ./.homebridge"
+    "test": "./node_modules/homebridge/bin/homebridge -P ./ -I -U ./.homebridge",
+    "watch": "npm link && nodemon"
   },
   "repository": {
     "type": "git",
@@ -32,6 +33,7 @@
     "ws": "^7.2.1"
   },
   "devDependencies": {
-    "homebridge": "^1.0.0"
+    "homebridge": "^1.0.0",
+    "nodemon": "^2.0.4"
   }
 }
