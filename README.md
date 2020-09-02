@@ -105,6 +105,8 @@ The software for the microcontroller has it's own github project. For info on ho
 
 - `switches` is the list of configured switches. When Homebridge is running the console will show the needed code and pulse values for any received 433MHz signals it can decode so you can find them there and enter them in your config.json file. Switches work bidirectionally, when a switch is changed in homekit a 433 signal is sent, when the 433 signal is received the switch in homekit is changed.
 
+- `dimmers` is the list of configured dimmers. 
+
 - `buttons` is a list of configured buttons. Buttons work differently in that there is no on/off pair, each signal is routed to its own switch. These switches enable for one second and then disable again. This makes it easy to trigger scenes with these buttons regardless of their on/off state.
 Buttons only work for receiving signals.
 
