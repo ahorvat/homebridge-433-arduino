@@ -204,7 +204,7 @@ function ArduinoDimmerAccessory (sw, log, config, transceiver) {
         self.lastOnTime = Date.now();
         
         //make dim message
-        dim = Math.floor(value / 100 * 16)
+        dim = Math.floor(value / 100 * 16) //TODO load from config
         self.currentBrightness = value;
         self.currentState = 1;
         self.log(`New Val: ${dim}`)
